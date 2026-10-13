@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Permainan Mengelaskan هٰذَا & هٰذِهِ - Bahasa Arab Tahun 2</title>
+
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Amiri:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti Library -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Fredoka', sans-serif;
+      margin: 0;
+      padding: 12px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(-45deg, #FF9A9E, #FECFEF, #A1C4FD, #C2E9FB, #A8EDEA);
+      background-size: 400% 400%;
+      animation: gradientBG 12s ease infinite;
+      overflow-x: hidden;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .arabic-text {
+      font-family: 'Amiri', serif;
+      direction: rtl;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+
+    .game-card {
+      background: #FFFFFF;
+      border-radius: 24px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      border: 4px solid #FCD34D;
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    .game-card:active {
+      cursor: grabbing;
+      transform: scale(1.05);
+    }
+
+    .game-card.selected {
+      border-color: #2563EB;
+      box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.4);
+      transform: translateY(-8px) scale(1.03);
+    }
+
+    .bucket {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 28px;
+      border: 5px dashed #94A3B8;
+      transition: all 0.3s ease;
+      min-height: 220px;
+    }
+
+    .bucket.haza-bucket {
+      border-color: #3B82F6;
+      background: rgba(239, 246, 255, 0.95);
+    }
+
+    .bucket.hazihi-bucket {
+      border-color: #EC4899;
+      background: rgba(253, 242, 248, 0.95);
+    }
+
+    .bucket.drag-over {
+      transform: scale(1.02);
+      border-style: solid;
+      background: #FEF08A;
+    }
+
+    .phono-badge {
+      background: #FEF3C7;
+      color: #92400E;
+      border: 2px solid #F59E0B;
+      padding: 4px 12px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 14px;
+      display: inline-block;
+    }
+
+    .phono-highlight {
+      color: #D97706;
+      font-weight: 800;
+      text-decoration: underline;
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.3s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bounce-in {
+      animation: bounceIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); opacity: 1; }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="w-full max-w-4xl bg-white/90 backdrop-blur-md rounded-3xl p-5 shadow-2xl border-4 border-white mb-4">
+    <div class="flex flex-col md:flex-row justify-between items-center gap-3">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-extrabold text-indigo-900 flex items-center gap-2">
+          <span>🎯 Permainan Kelaskan:</span>
+          <span class="arabic-text text-amber-600 text-3xl">هٰذَا</span>
+          <span>&</span>
+          <span class="arabic-text text-pink-600 text-3xl">هٰذِهِ</span>
+        </h1>
+        <p class="text-gray-600 font-semibold text-sm mt-1">
+          Pilih atau seret peralatan sekolah ke dalam kotak kata tunjuk yang betul!
+        </p>
+      </div>
+
+      <!-- Scoreboard -->
+      <div class="flex items-center gap-4 bg-amber-100 border-2 border-amber-300 px-5 py-2 rounded-2xl">
+        <div class="text-center">
+          <span class="text-xs text-amber-800 font-bold block">MARKAH</span>
+          <span id="scoreText" class="text-2xl font-extrabold text-amber-900">0 / 6</span>
+        </div>
+        <div class="text-3xl text-amber-500">
+          <i class="fa-solid fa-star"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+    
+    <!-- Bucket HAZA -->
+    <div id="hazaBucket" class="bucket haza-bucket p-5 flex flex-col items-center justify-start text-center"
+         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'haza')" onclick="selectBucket('haza')">
+      <div class="bg-blue-600 text-white px-6 py-2 rounded-2xl shadow-lg mb-3">
+        <span class="arabic-text text-4xl block">هٰذَا</span>
+        <span class="text-xs font-bold uppercase tracking-wider block">Lelaki (Tiada ة di akhir)</span>
+      </div>
+      <p class="text-blue-700 text-xs font-bold mb-3">Tekan kad kemudian tekan petak ini ATAU seret terus</p>
+      <div id="hazaContainer" class="w-full grid grid-cols-2 gap-3 min-h-[100px]">
+        <!-- Dropped Cards Will Appear Here -->
+      </div>
+    </div>
+
+    <!-- Bucket HAZIHI -->
+    <div id="hazihiBucket" class="bucket hazihi-bucket p-5 flex flex-col items-center justify-start text-center"
+         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, 'hazihi')" onclick="selectBucket('hazihi')">
+      <div class="bg-pink-600 text-white px-6 py-2 rounded-2xl shadow-lg mb-3">
+        <span class="arabic-text text-4xl block">هٰذِهِ</span>
+        <span class="text-xs font-bold uppercase tracking-wider block">Perempuan (Ada Ta Marbutah ة)</span>
+      </div>
+      <p class="text-pink-700 text-xs font-bold mb-3">Tekan kad kemudian tekan petak ini ATAU seret terus</p>
+      <div id="hazihiContainer" class="w-full grid grid-cols-2 gap-3 min-h-[100px]">
+        <!-- Dropped Cards Will Appear Here -->
+      </div>
+    </div>
+
+  </div>
+
+  <div class="w-full max-w-4xl bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-xl border-4 border-white text-center mb-4">
+    <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center justify-center gap-2">
+      <i class="fa-solid fa-hand-pointer text-amber-500"></i> Pilih Peralatan Sekolah Di Bawah:
+    </h2>
+
+    <div id="cardsPool" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+      <!-- Cards rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div class="flex gap-4">
+    <button onclick="resetGame()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-6 py-3 rounded-full shadow-lg transition transform hover:scale-105 flex items-center gap-2">
+      <i class="fa-solid fa-rotate-right"></i> Main Semula
+    </button>
+  </div>
+
+  <div id="winModal" class="modal-overlay">
+    <div class="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border-8 border-yellow-300 bounce-in mx-4">
+      <div class="text-6xl text-yellow-400 mb-3">🏆</div>
+      <h2 class="text-3xl font-extrabold text-emerald-800 mb-2">ممتاز! Tahniah!</h2>
+      <p class="text-gray-700 font-bold mb-4">Anda berjaya mengelaskan semua peralatan sekolah dengan betul!</p>
+      
+      <div class="bg-amber-50 p-4 rounded-2xl border-2 border-amber-200 mb-5">
+        <p class="text-amber-900 font-extrabold text-xl">Markah Penuh: 6 / 6 🎉</p>
+      </div>
+
+      <button onclick="resetGame()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold py-3 rounded-2xl text-lg shadow-lg hover:brightness-110 transition">
+        Main Lagi 🔄
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Game Item Data
+    const itemsData = [
+      { id: 'item1', text: 'قَلَمٌ', phono: 'Qa-la-mun', meaning: 'Pensel', type: 'haza', icon: 'fa-pencil', color: 'text-amber-600' },
+      { id: 'item2', text: 'مِسْطَرَةٌ', phono: 'Mis-to-ro-tun', meaning: 'Pembaris', type: 'hazihi', icon: 'fa-ruler-combined', color: 'text-pink-600', specialNote: 'Baris Bawah: MIS ᵢ' },
+      { id: 'item3', text: 'كِتَابٌ', phono: 'Ki-taa-bun', meaning: 'Buku', type: 'haza', icon: 'fa-book', color: 'text-blue-600' },
+      { id: 'item4', text: 'مِمْحَاةٌ', phono: 'Mim-haa-tun', meaning: 'Pemadam', type: 'hazihi', icon: 'fa-eraser', color: 'text-emerald-600', specialNote: 'Baris Bawah: MIM ᵢ' },
+      { id: 'item5', text: 'مِقْلَمَةٌ', phono: 'Miq-la-ma-tun', meaning: 'Bekas Pensel', type: 'hazihi', icon: 'fa-box-archive', color: 'text-purple-600' },
+      { id: 'item6', text: 'حَقِيبَةٌ', phono: 'Ha-qii-ba-tun', meaning: 'Beg Sekolah', type: 'hazihi', icon: 'fa-briefcase', color: 'text-rose-600' }
+    ];
+
+    let currentScore = 0;
+    let selectedCardId = null;
+    let placedItems = {};
+
+    // Web Audio Effects
+    function playAudioTone(freq, type, duration) {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        console.log('Audio Context Error:', e);
+      }
+    }
+
+    function playSuccessSound() {
+      playAudioTone(523.25, 'sine', 0.15); // C5
+      setTimeout(() => playAudioTone(659.25, 'sine', 0.15), 100); // E5
+      setTimeout(() => playAudioTone(783.99, 'sine', 0.25), 200); // G5
+    }
+
+    function playWrongSound() {
+      playAudioTone(200, 'sawtooth', 0.25);
+    }
+
+    // Initialize Game
+    function initGame() {
+      currentScore = 0;
+      selectedCardId = null;
+      placedItems = {};
+      document.getElementById('scoreText').innerText = `0 / ${itemsData.length}`;
+      document.getElementById('winModal').classList.remove('active');
+
+      document.getElementById('hazaContainer').innerHTML = '';
+      document.getElementById('hazihiContainer').innerHTML = '';
+
+      const pool = document.getElementById('cardsPool');
+      pool.innerHTML = '';
+
+      // Shuffle array
+      const shuffled = [...itemsData].sort(() => Math.random() - 0.5);
+
+      shuffled.forEach(item => {
+        const card = document.createElement('div');
+        card.id = item.id;
+        card.draggable = true;
+        card.className = 'game-card p-3 text-center flex flex-col items-center justify-between bg-white select-none';
+        
+        card.innerHTML = `
+          <div class="text-3xl ${item.color} mb-1"><i class="fa-solid ${item.icon}"></i></div>
+          <div class="arabic-text text-2xl text-gray-800">${item.text}</div>
+          <div class="phono-badge my-1">${item.phono}</div>
+          <div class="text-xs font-bold text-gray-600">${item.meaning}</div>
+        `;
+
+        // Event Listeners for Drag and Click
+        card.ondragstart = (e) => handleDragStart(e, item.id);
+        card.onclick = (e) => { e.stopPropagation(); handleCardClick(item.id); };
+
+        pool.appendChild(card);
+      });
+    }
+
+    // Handle Tap/Click Selection
+    function handleCardClick(id) {
+      if (placedItems[id]) return; // Already placed
+
+      if (selectedCardId === id) {
+        // Deselect
+        selectedCardId = null;
+        document.getElementById(id).classList.remove('selected');
+      } else {
+        if (selectedCardId) {
+          const prev = document.getElementById(selectedCardId);
+          if (prev) prev.classList.remove('selected');
+        }
+        selectedCardId = id;
+        document.getElementById(id).classList.add('selected');
+      }
+    }
+
+    function selectBucket(bucketType) {
+      if (!selectedCardId) return;
+      processPlacement(selectedCardId, bucketType);
+    }
+
+    // Drag and Drop Logic
+    function handleDragStart(e, id) {
+      e.dataTransfer.setData('text/plain', id);
+      selectedCardId = id;
+      document.getElementById(id).classList.add('selected');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.currentTarget.classList.add('drag-over');
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, bucketType) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain') || selectedCardId;
+      if (id) {
+        processPlacement(id, bucketType);
+      }
+    }
+
+    // Process Drop/Selection Validation
+    function processPlacement(itemId, targetBucket) {
+      const item = itemsData.find(i => i.id === itemId);
+      if (!item || placedItems[itemId]) return;
+
+      const cardElem = document.getElementById(itemId);
+      cardElem.classList.remove('selected');
+      selectedCardId = null;
+
+      if (item.type === targetBucket) {
+        // Correct Answer
+        playSuccessSound();
+        placedItems[itemId] = true;
+        currentScore++;
+
+        document.getElementById('scoreText').innerText = `${currentScore} / ${itemsData.length}`;
+
+        // Move Card to Bucket
+        const targetContainer = targetBucket === 'haza' ? 
+          document.getElementById('hazaContainer') : 
+          document.getElementById('hazihiContainer');
+
+        cardElem.draggable = false;
+        cardElem.onclick = null;
+        cardElem.className = 'bg-white rounded-xl p-2 border-2 border-emerald-400 shadow-sm text-center flex flex-col items-center justify-center';
+        cardElem.innerHTML = `
+          <div class="arabic-text text-xl font-bold text-emerald-800">${item.text}</div>
+          <div class="text-[11px] font-bold text-gray-600">${item.phono}</div>
+        `;
+
+        targetContainer.appendChild(cardElem);
+
+        // Check Win Condition
+        if (currentScore === itemsData.length) {
+          setTimeout(() => {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+            document.getElementById('winModal').classList.add('active');
+          }, 300);
+        }
+
+      } else {
+        // Wrong Answer
+        playWrongSound();
+        cardElem.classList.add('border-red-500', 'animate-bounce');
+        setTimeout(() => {
+          cardElem.classList.remove('border-red-500', 'animate-bounce');
+        }, 800);
+      }
+    }
+
+    function resetGame() {
+      initGame();
+    }
+
+    window.onload = initGame;
+  </script>
+</body>
+</html>
